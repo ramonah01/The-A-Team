@@ -1,0 +1,50 @@
+{
+  "entities": {
+    "Team": {
+      "title": "Team",
+      "description": "A generated team structure and process flow for an operation.",
+      "type": "object",
+      "properties": {
+        "operationName": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "teamMembers": { "type": "array" },
+        "processFlow": { "type": "array" }
+      },
+      "required": ["operationName", "ownerId", "createdAt", "teamMembers", "processFlow"]
+    },
+    "MemoryItem": {
+      "title": "MemoryItem",
+      "description": "A single memory entry with content and a timestamp.",
+      "type": "object",
+      "properties": {
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["content", "timestamp"]
+    },
+    "Memory": {
+      "title": "Memory",
+      "description": "Persistent memory ledger for a specific team member role.",
+      "type": "object",
+      "properties": {
+        "teamId": { "type": "string" },
+        "role": { "type": "string" },
+        "activities": { "type": "array", "items": { "$ref": "MemoryItem" } },
+        "resources": { "type": "array", "items": { "$ref": "MemoryItem" } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teamId", "role", "activities", "resources", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/teams/{teamId}": {
+      "schema": "Team",
+      "description": "Stores generated team architectures."
+    },
+    "/memories/{memoryId}": {
+      "schema": "Memory",
+      "description": "Stores persistent memory ledgers for team members."
+    }
+  }
+}

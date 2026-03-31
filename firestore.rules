@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: teams
+    // Fields: operationName (string), ownerId (string), createdAt (timestamp), teamMembers (array), processFlow (array)
+    //
+    // Collection: memories
+    // Fields: teamId (string), role (string), activities (list of objects), resources (list of objects), updatedAt (timestamp)
+    // Memory Item: { content: string, timestamp: string }
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "ramona@ramonaharms.cpa" && request.auth.token.email_verified == true));
+    }
+
+    function isValidTeam(data) {
+      return data.operationName is string && data.operationName.size() > 0 && data.operationName.size() < 200 &&
+             data.ownerId == request.auth.uid &&
+             data.teamMembers is list &&
+             data.processFlow is list;
+    }
+
+    function isValidMemory(data) {
+      return data.teamId is string &&
+             data.role is string &&
+             data.activities is list &&
+             data.resources is list;
+    }
+
+    match /teams/{teamId} {
+      allow read: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidTeam(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(resource.data.ownerId) && isValidTeam(request.resource.data);
+      allow delete: if isAuthenticated() && isOwner(resource.data.ownerId);
+    }
+
+    match /memories/{memoryId} {
+      // Access to memory depends on owning the team it belongs to
+      function canAccessTeam(teamId) {
+        return exists(/databases/$(database)/documents/teams/$(teamId)) && 
+               get(/databases/$(database)/documents/teams/$(teamId)).data.ownerId == request.auth.uid;
+      }
+
+      allow read: if isAuthenticated() && (canAccessTeam(resource.data.teamId) || isAdmin());
+      allow create: if isAuthenticated() && canAccessTeam(request.resource.data.teamId) && isValidMemory(request.resource.data);
+      allow update: if isAuthenticated() && canAccessTeam(resource.data.teamId) && isValidMemory(request.resource.data);
+      allow delete: if isAuthenticated() && canAccessTeam(resource.data.teamId);
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}
