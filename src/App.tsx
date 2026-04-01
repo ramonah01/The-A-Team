@@ -99,29 +99,29 @@ const RESPONSE_SCHEMA = {
           memorySystem: {
             type: Type.OBJECT,
             properties: {
-              resources: { 
-                type: Type.ARRAY, 
-                items: { 
+              resources: {
+                type: Type.ARRAY,
+                items: {
                   type: Type.OBJECT,
                   properties: {
-                    content: { type: Type.STRING, description: "The resource content or name." },
-                    timestamp: { type: Type.STRING, description: "ISO 8601 timestamp of when this resource was added or last verified." }
+                    content: { type: Type.STRING, description: "An actionable setup task describing what resource this agent needs configured (e.g., 'Locate and link the project version registry'). Do NOT invent generic names or timestamps." },
+                    status: { type: Type.STRING, enum: ["pending", "completed"], description: "Always set to 'pending' — status is updated during deployment, not generation." }
                   },
-                  required: ["content", "timestamp"]
+                  required: ["content", "status"]
                 },
-                description: "Initial list of resources, manuals, or databases to refer to."
+                description: "Setup tasks: what resources, files, or databases this agent needs configured in the target environment. Write as actionable items (e.g., 'Locate and link the project version registry') — NOT generic names like 'Master Database'. Do NOT invent timestamps."
               },
-              initialActivities: { 
-                type: Type.ARRAY, 
-                items: { 
+              initialActivities: {
+                type: Type.ARRAY,
+                items: {
                   type: Type.OBJECT,
                   properties: {
-                    content: { type: Type.STRING, description: "The activity or task description." },
-                    timestamp: { type: Type.STRING, description: "ISO 8601 timestamp of when this task was recorded." }
+                    content: { type: Type.STRING, description: "A verifiable onboarding task (e.g., 'Validate all source file paths exist'). Do NOT invent generic actions or timestamps." },
+                    status: { type: Type.STRING, enum: ["pending", "completed"], description: "Always set to 'pending' — status is updated during deployment, not generation." }
                   },
-                  required: ["content", "timestamp"]
+                  required: ["content", "status"]
                 },
-                description: "Initial set of activities or tasks to be performed."
+                description: "Onboarding tasks: first actions when deployed into the target environment. Write as verifiable setup tasks (e.g., 'Validate all source file paths') — NOT vague actions like 'Initialize system'. Do NOT invent timestamps."
               }
             },
             required: ["resources", "initialActivities"]
@@ -340,9 +340,16 @@ export default function App() {
           4. Every agent (team member) MUST have "Memory Creation Logging" and "Persistent Task Recording" explicitly listed in their skills and capabilities.
           5. The Ultimate Orchestrator must have instructions to update the system-wide memory index and coordinate between agent-specific memories.
           
+          MEMORY SYSTEM RULES:
+          - Resources and initialActivities should be SETUP TASKS for the target environment, not fake pre-existing resources.
+          - Write each item as an actionable TODO (e.g., "Identify and link the project's source data directory").
+          - Do NOT generate timestamps — they are assigned when tasks are completed during deployment.
+          - Do NOT invent generic names like "Master Database" or "Historical Records".
+          - Set status to "pending" for all items.
+
           OUTPUT SPECIFICATIONS:
           - Be concise but thorough. Avoid redundant descriptions.
-          - For each team member: Provide a detailed breakdown of their function, inputs, outputs, instructions, capabilities, skills, attributes, and an initial memory system (resources and activities).
+          - For each team member: Provide a detailed breakdown of their function, inputs, outputs, instructions, capabilities, skills, attributes, and an initial memory system (resources and activities as setup tasks).
           - Process Flow: Create a step-by-step process flow diagram mapping how these roles interact to achieve the FULL scope of the operation.`,
           config: {
             responseMimeType: "application/json",
@@ -369,12 +376,18 @@ export default function App() {
 
         await setDoc(doc(db, "teams", teamId), teamData);
         
-        // Initialize memories in state and Firestore
+        // Initialize memories in state and Firestore — force pending status, strip LLM timestamps
         const initialMemories: Record<string, { activities: MemoryItem[], resources: MemoryItem[] }> = {};
         for (const member of result.teamMembers) {
           const mem = {
-            activities: member.memorySystem?.initialActivities || [],
-            resources: member.memorySystem?.resources || []
+            activities: (member.memorySystem?.initialActivities || []).map(a => ({
+              content: a.content,
+              status: 'pending' as const
+            })),
+            resources: (member.memorySystem?.resources || []).map(r => ({
+              content: r.content,
+              status: 'pending' as const
+            }))
           };
           initialMemories[member.role] = mem;
           
@@ -427,7 +440,8 @@ export default function App() {
     if (!team || !user) return;
     const newItem: MemoryItem = {
       content: activity,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      status: 'completed'
     };
     const newMemories = {
       ...memberMemories,
@@ -455,7 +469,8 @@ export default function App() {
     if (!team || !user) return;
     const newItem: MemoryItem = {
       content: resource,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      status: 'completed'
     };
     const newMemories = {
       ...memberMemories,
@@ -550,13 +565,19 @@ export default function App() {
       memoryLedgerMd += `## Memory: ${m.role}\n`;
       memoryLedgerMd += `### Task Recordings (Activities)\n`;
       (currentMem?.activities || m.memorySystem.initialActivities).forEach(a => {
-        const ts = a.timestamp ? ` [${new Date(a.timestamp).toLocaleString()}]` : '';
-        memoryLedgerMd += `- ${a.content}${ts}\n`;
+        if (a.status === 'completed' && a.timestamp) {
+          memoryLedgerMd += `- ${a.content} [${new Date(a.timestamp).toLocaleString()}]\n`;
+        } else {
+          memoryLedgerMd += `- **TODO:** ${a.content}\n`;
+        }
       });
       memoryLedgerMd += `\n### Resource Recall\n`;
       (currentMem?.resources || m.memorySystem.resources).forEach(r => {
-        const ts = r.timestamp ? ` [${new Date(r.timestamp).toLocaleString()}]` : '';
-        memoryLedgerMd += `- ${r.content}${ts}\n`;
+        if (r.status === 'completed' && r.timestamp) {
+          memoryLedgerMd += `- ${r.content} [${new Date(r.timestamp).toLocaleString()}]\n`;
+        } else {
+          memoryLedgerMd += `- **TODO:** ${r.content}\n`;
+        }
       });
       memoryLedgerMd += `\n---\n\n`;
     });
@@ -609,13 +630,19 @@ export default function App() {
       memberMd += `### Resources\n`;
       const currentMem = memberMemories[m.role];
       (currentMem?.resources || m.memorySystem.resources).forEach(r => {
-        const ts = r.timestamp ? ` [${new Date(r.timestamp).toLocaleString()}]` : '';
-        memberMd += `- ${r.content}${ts}\n`;
+        if (r.status === 'completed' && r.timestamp) {
+          memberMd += `- ${r.content} [${new Date(r.timestamp).toLocaleString()}]\n`;
+        } else {
+          memberMd += `- **TODO:** ${r.content}\n`;
+        }
       });
       memberMd += `\n### Activities\n`;
       (currentMem?.activities || m.memorySystem.initialActivities).forEach(a => {
-        const ts = a.timestamp ? ` [${new Date(a.timestamp).toLocaleString()}]` : '';
-        memberMd += `- ${a.content}${ts}\n`;
+        if (a.status === 'completed' && a.timestamp) {
+          memberMd += `- ${a.content} [${new Date(a.timestamp).toLocaleString()}]\n`;
+        } else {
+          memberMd += `- **TODO:** ${a.content}\n`;
+        }
       });
       
       membersFolder?.file(`${m.role.replace(/\s+/g, '_').toLowerCase()}.md`, memberMd);
@@ -1249,11 +1276,13 @@ export default function App() {
                                       {memberMemories[member.role]?.activities.map((act, i) => (
                                         <div key={i} className="p-2 bg-slate-800/50 border border-slate-700/50 rounded text-[11px] text-slate-300 flex flex-col gap-1">
                                           <div className="flex items-start gap-2">
-                                            <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                                            <div className={`w-1 h-1 rounded-full mt-1.5 shrink-0 ${act.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                                             {act.content}
                                           </div>
                                           <div className="text-[8px] text-slate-500 font-mono pl-3">
-                                            {new Date(act.timestamp).toLocaleString()}
+                                            {act.status === 'completed' && act.timestamp
+                                              ? new Date(act.timestamp).toLocaleString()
+                                              : 'Pending'}
                                           </div>
                                         </div>
                                       ))}
@@ -1320,10 +1349,12 @@ export default function App() {
 
                                     <div className="flex flex-wrap gap-2">
                                       {memberMemories[member.role]?.resources.map((res, i) => (
-                                        <div key={i} className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-400 font-mono flex flex-col gap-0.5">
+                                        <div key={i} className={`px-2 py-1 border rounded text-[10px] font-mono flex flex-col gap-0.5 ${res.status === 'completed' ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-slate-800 border-amber-700/50 text-amber-400/80'}`}>
                                           <span>{res.content}</span>
                                           <span className="text-[7px] text-slate-600">
-                                            {new Date(res.timestamp).toLocaleDateString()}
+                                            {res.status === 'completed' && res.timestamp
+                                              ? new Date(res.timestamp).toLocaleDateString()
+                                              : 'Pending'}
                                           </span>
                                         </div>
                                       ))}
@@ -1406,3 +1437,4 @@ export default function App() {
     </div>
   );
 }
+

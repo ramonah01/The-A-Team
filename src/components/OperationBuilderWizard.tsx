@@ -18,13 +18,6 @@ export function OperationBuilderWizard({ isOpen, onClose, onComplete, ai }: Oper
   const [error, setError] = useState<string | null>(null);
 
   const [data, setData] = useState({
-    questions: {
-      taskDefinition: '',
-      inputStructure: '',
-      decisionRules: '',
-      outputStandard: '',
-      feedbackLoop: ''
-    },
     baseline: {
       trigger: '',
       inputs: '',
@@ -50,10 +43,6 @@ export function OperationBuilderWizard({ isOpen, onClose, onComplete, ai }: Oper
 
   if (!isOpen) return null;
 
-  const updateQuestion = (field: keyof typeof data.questions, value: string) => {
-    setData(prev => ({ ...prev, questions: { ...prev.questions, [field]: value } }));
-  };
-
   const updateBaseline = (field: keyof typeof data.baseline, value: string) => {
     setData(prev => ({ ...prev, baseline: { ...prev.baseline, [field]: value } }));
   };
@@ -66,7 +55,7 @@ export function OperationBuilderWizard({ isOpen, onClose, onComplete, ai }: Oper
     setLoading(true);
     setError(null);
     try {
-      const prompt = `You are an expert AI Systems Architect. Based on the user's interview answers and human-baseline process, draft a comprehensive description of the operation. Extract, summarize, and classify the workflow.
+      const prompt = `You are an expert AI Systems Architect. Based on the human-baseline process, draft a comprehensive description of the operation. Extract, summarize, and classify the workflow.
 
 CRITICAL DESIGN COMPONENTS:
 The AI-assisted workflow MUST be structured using the following core layers:
@@ -78,13 +67,6 @@ The AI-assisted workflow MUST be structured using the following core layers:
 - Human review layer: Required for exceptions, high-risk items, or approvals
 - Audit layer: Stores prompt, inputs, outputs, approvals, timestamps, evidence
 - Feedback layer: Captures corrections and converts them into workflow improvements
-
-Interview Answers:
-- Task: ${data.questions.taskDefinition}
-- Inputs: ${data.questions.inputStructure}
-- Decision Rules: ${data.questions.decisionRules}
-- Output Standard: ${data.questions.outputStandard}
-- Feedback Loop: ${data.questions.feedbackLoop}
 
 Human Baseline:
 - Trigger: ${data.baseline.trigger}
@@ -287,35 +269,38 @@ Draft a final, comprehensive "Operation Parameters" document.`;
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-bold text-slate-900">Interview Questions</h3>
-              <p className="text-sm text-slate-500">Let's start by defining the core aspects of the operation.</p>
+              <h3 className="text-lg font-bold text-slate-900">How the AI Wizard Works</h3>
+              <p className="text-sm text-slate-500">Before we begin, here is how the AI will structure your operation.</p>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">1. The task definition</label>
-                <p className="text-xs text-slate-500 mb-2">What exact job is the AI team doing?</p>
-                <textarea className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" rows={2} value={data.questions.taskDefinition} onChange={e => updateQuestion('taskDefinition', e.target.value)} />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">2. The input structure</label>
-                <p className="text-xs text-slate-500 mb-2">What context, documents, fields, examples, and constraints does it receive?</p>
-                <textarea className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" rows={2} value={data.questions.inputStructure} onChange={e => updateQuestion('inputStructure', e.target.value)} />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">3. The decision rules</label>
-                <p className="text-xs text-slate-500 mb-2">When does AI act, when does it suggest, and when must a human approve?</p>
-                <textarea className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" rows={2} value={data.questions.decisionRules} onChange={e => updateQuestion('decisionRules', e.target.value)} />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">4. The output standard</label>
-                <p className="text-xs text-slate-500 mb-2">What does a good result look like?</p>
-                <textarea className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" rows={2} value={data.questions.outputStandard} onChange={e => updateQuestion('outputStandard', e.target.value)} />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">5. The feedback loop</label>
-                <p className="text-xs text-slate-500 mb-2">How are mistakes captured and used to improve future runs?</p>
-                <textarea className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" rows={2} value={data.questions.feedbackLoop} onChange={e => updateQuestion('feedbackLoop', e.target.value)} />
-              </div>
+            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+              <p className="text-sm text-slate-700 leading-relaxed">
+                The AI will automatically capture and synthesize the following core elements throughout the next stages:
+              </p>
+              <ul className="space-y-3 text-sm text-slate-600">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                  <span><strong>The Task Definition:</strong> What exact job the AI team is doing.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                  <span><strong>The Input Structure:</strong> The context, documents, fields, examples, and constraints it receives.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                  <span><strong>The Decision Rules:</strong> When the AI acts, when it suggests, and when a human must approve.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                  <span><strong>The Output Standard:</strong> What a successful and high-quality result looks like.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                  <span><strong>The Feedback Loop:</strong> How mistakes are captured and used to improve future runs.</span>
+                </li>
+              </ul>
+              <p className="text-sm text-slate-700 leading-relaxed mt-4">
+                You won't need to answer these directly upfront. Instead, we'll start by establishing your current human baseline, and the AI will construct these elements for you to review and refine.
+              </p>
             </div>
           </div>
         );
@@ -329,35 +314,35 @@ Draft a final, comprehensive "Operation Parameters" document.`;
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Trigger</label>
-                <input type="text" className="w-full p-2 border border-slate-200 rounded-lg text-sm" value={data.baseline.trigger} onChange={e => updateBaseline('trigger', e.target.value)} />
+                <textarea rows={3} className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" value={data.baseline.trigger} onChange={e => updateBaseline('trigger', e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Inputs</label>
-                <input type="text" className="w-full p-2 border border-slate-200 rounded-lg text-sm" value={data.baseline.inputs} onChange={e => updateBaseline('inputs', e.target.value)} />
+                <textarea rows={3} className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" value={data.baseline.inputs} onChange={e => updateBaseline('inputs', e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Decision Points</label>
-                <input type="text" className="w-full p-2 border border-slate-200 rounded-lg text-sm" value={data.baseline.decisionPoints} onChange={e => updateBaseline('decisionPoints', e.target.value)} />
+                <textarea rows={3} className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" value={data.baseline.decisionPoints} onChange={e => updateBaseline('decisionPoints', e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Outputs</label>
-                <input type="text" className="w-full p-2 border border-slate-200 rounded-lg text-sm" value={data.baseline.outputs} onChange={e => updateBaseline('outputs', e.target.value)} />
+                <textarea rows={3} className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" value={data.baseline.outputs} onChange={e => updateBaseline('outputs', e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Approval Steps</label>
-                <input type="text" className="w-full p-2 border border-slate-200 rounded-lg text-sm" value={data.baseline.approvalSteps} onChange={e => updateBaseline('approvalSteps', e.target.value)} />
+                <textarea rows={3} className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" value={data.baseline.approvalSteps} onChange={e => updateBaseline('approvalSteps', e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Exception Paths</label>
-                <input type="text" className="w-full p-2 border border-slate-200 rounded-lg text-sm" value={data.baseline.exceptionPaths} onChange={e => updateBaseline('exceptionPaths', e.target.value)} />
+                <textarea rows={3} className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" value={data.baseline.exceptionPaths} onChange={e => updateBaseline('exceptionPaths', e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Time Spent</label>
-                <input type="text" className="w-full p-2 border border-slate-200 rounded-lg text-sm" value={data.baseline.timeSpent} onChange={e => updateBaseline('timeSpent', e.target.value)} />
+                <textarea rows={3} className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" value={data.baseline.timeSpent} onChange={e => updateBaseline('timeSpent', e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Common Defects</label>
-                <input type="text" className="w-full p-2 border border-slate-200 rounded-lg text-sm" value={data.baseline.commonDefects} onChange={e => updateBaseline('commonDefects', e.target.value)} />
+                <textarea rows={3} className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" value={data.baseline.commonDefects} onChange={e => updateBaseline('commonDefects', e.target.value)} />
               </div>
             </div>
           </div>

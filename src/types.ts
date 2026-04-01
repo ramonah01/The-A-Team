@@ -1,6 +1,7 @@
 export interface MemoryItem {
   content: string;
-  timestamp: string;
+  timestamp?: string;
+  status?: 'pending' | 'completed';
 }
 
 export interface TeamMember {
