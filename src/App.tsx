@@ -36,7 +36,8 @@ import {
   auth, 
   db, 
   googleProvider, 
-  signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signOut, 
   onAuthStateChanged,
   collection,
@@ -255,6 +256,13 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    getRedirectResult(auth).catch((error) => {
+      console.error("Redirect login error:", error);
+      setError(`Login error: ${error.message}`);
+    });
+  }, []);
+
   const loadHistory = async (uid: string) => {
     try {
       const q = query(collection(db, "teams"), where("ownerId", "==", uid));
@@ -283,7 +291,7 @@ export default function App() {
 
   const login = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
     } catch (err) {
       console.error("Login failed:", err);
       setError("Login failed. Please try again.");
